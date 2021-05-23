@@ -1,0 +1,129 @@
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://min:password@localhost:5432/hackerthon"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum DisabledType {
+  WHEELCHAIR
+  BLIND
+}
+
+enum Role {
+  COMPANY
+  CLIENT
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  email        String        @unique
+  name         String?
+  password     String
+  certificate  String?
+  disabledType DisabledType?
+  role         Role
+  BusDriver    BusDriver?
+  Passengers   Passenger[]
+  DriverEvaluations DriverEvaluation[]
+}
+
+model Passenger {
+    id          Int         @id @default(autoincrement())
+    createdAt   DateTime    @default(now())
+    userId      Int
+    User        User        @relation(fields: [userId], references: [id])
+    busdriverId Int
+    BusDriver   BusDriver   @relation(fields: [busdriverId], references: [id])
+    stationId   Int?
+    Station     Station?     @relation(fields: [stationId], references: [id])
+    status      PassengerStatus     @default(BOARDING)
+
+    @@unique([userId, busdriverId], name: "Passenger_userId_busdriverId_unique_constraint")
+}
+
+enum PassengerStatus {
+   BOARDING
+   GETOFF
+}
+
+model DriverEvaluation {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  point       Int?
+  speedPoint  Int?
+  kindPoint   Int?
+  memo        String?
+  BusDriver   BusDriver @relation(fields: [busDriverId], references: [id])
+  busDriverId Int
+  userId      Int
+  User        User      @relation(fields: [userId], references: [id])
+}
+
+model Station {
+  id             Int             @id @default(autoincrement())
+  name           String
+  busAndStations BusAndStation[]
+  Passengers     Passenger[]
+}
+
+model BusAndStation {
+  id         Int        @id @default(autoincrement())
+  stationId  Int
+  Station    Station    @relation(fields: [stationId], references: [id])
+  busId      Int
+  Bus        Bus        @relation(fields: [busId], references: [id])
+  nextId     Int?
+  prevId     Int?
+  startPoint Boolean
+  endPoint   Boolean
+  MovingBus  MovingBus?
+
+  @@unique([busId, stationId], name: "BusAndStation_busId_stationId_unique_constraint")
+}
+
+model MovingBus {
+  id              Int           @id @default(autoincrement())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  busDriverId     Int
+  BusDriver       BusDriver     @relation(fields: [busDriverId], references: [id])
+  busAndStationId Int
+  BusAndStation   BusAndStation @relation(fields: [busAndStationId], references: [id])
+}
+
+model BusDriver {
+  id                Int                @id @default(autoincrement())
+  companyName       String
+  userId            Int
+  User              User               @relation(fields: [userId], references: [id])
+  busId             Int
+  Bus               Bus                @relation(fields: [busId], references: [id])
+  DriverEvaluations DriverEvaluation[]
+  Passengers        Passenger[]
+
+  @@unique([userId, busId], name: "BusDriver_userId_busId_unique_constraint")
+  MovingBus MovingBus[]
+}
+
+model Bus {
+  id             Int             @id @default(autoincrement())
+  name           String
+  busAndStations BusAndStation[]
+  BusDriver      BusDriver?
+}
+
+model CustomerHistroy {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+
+}
