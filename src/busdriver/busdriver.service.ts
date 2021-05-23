@@ -121,6 +121,9 @@ export class BusdriverService {
       });
     }
 
+    mappers[0].blindOn = 1;
+    mappers[1].wheelchairOff = 1;
+    mappers[3].blindOff = 1;
     return mappers;
   }
 }

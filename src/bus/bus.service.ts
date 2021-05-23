@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../service/prisma.service';
 import { Cron } from '@nestjs/schedule';
 import { EventsGateway } from '../websocket/event.gateway';
@@ -50,17 +50,55 @@ export class BusService {
       },
     });
 
-    return statuses.map((s) => {
-      const leftMin = Math.trunc(Math.random() * 10) + 5;
+    const mappers: any[] = [];
+
+    for await (const s of statuses) {
       const { id, name } = s.Bus;
-      return {
+
+      const mvb = await this.prisma.movingBus.findFirst({
+        where: {
+          BusAndStation: {
+            busId: id,
+          },
+        },
+        select: {
+          BusAndStation: {
+            select: {
+              stationId: true,
+            },
+          },
+        },
+      });
+
+      let leftStation;
+      if (mvb && mvb.BusAndStation) {
+        leftStation = Math.abs(mvb.BusAndStation.stationId - s.Station.id);
+      } else {
+        leftStation = 30;
+      }
+      const leftMin = leftStation * 2;
+
+      mappers.push({
         id,
         name,
         stationId: s.Station.id,
         leftMin,
-        leftStation: Math.floor(leftMin / 3),
-      };
-    });
+        leftStation,
+      });
+    }
+
+    // return statuses.map((s) => {
+    //   const { id, name } = s.Bus;
+    //   return {
+    //     id,
+    //     name,
+    //     stationId: s.Station.id,
+    //     // leftMin,
+    //     // leftStation: ,
+    //   };
+    // });
+
+    return mappers;
   }
 
   async getBusRouteMap(userId: number, busId: number) {
@@ -109,13 +147,16 @@ export class BusService {
   }
 
   async getOnTheBus(userId: number, busId: number, stationId: number) {
-    const busDriver = await this.prisma.busDriver.findFirst({
+    console.log('busId : ', busId);
+    const busDriver = await this.prisma.busDriver.findUnique({
       where: {
-        Bus: {
-          id: busId,
-        },
+        busId,
       },
     });
+
+    if (!busDriver) {
+      throw new NotFoundException('운전자를 찾을 수 없습니다');
+    }
 
     try {
       await this.prisma.passenger.create({
@@ -144,12 +185,12 @@ export class BusService {
     const u = await this.getUser(userId);
     const s = await this.getStation(stationId);
     const data = {
-      text: `${s.name!} 정류장에서 ${
-        u.disabledType === 'BLIND' ? '시각장애인' : '휠체어 이용자'
-      } 1분이 승차하십니다`,
-      driverId: busDriver.id,
+      name: s.name,
+      disabledType: u.disabledType,
+      type: '승차',
+      driverId: 6, //busDriver.id,
     };
-    this.socket.broadcast(JSON.stringify(data));
+    this.socket.broadcast(JSON.stringify(data), JSON.stringify(data));
   }
 
   async getOffTheBus(userId: number, busId: number, stationId: number) {
@@ -196,15 +237,15 @@ export class BusService {
     const u = await this.getUser(userId);
     const s = await this.getStation(stationId);
     const data = {
-      text: `${s.name!} 정류장에서 ${
-        u.disabledType === 'BLIND' ? '시각장애인' : '휠체어 이용자'
-      } 1분이 하차하십니다`,
-      driverId: busDriver.id,
+      name: s.name,
+      disabledType: u.disabledType,
+      type: '하차',
+      driverId: 6, //busDriver.id,
     };
-    this.socket.broadcast(JSON.stringify(data));
+    this.socket.broadcast(JSON.stringify(data), JSON.stringify(data));
   }
 
-  @Cron('1 * * * * *')
+  @Cron('3 * * * * *')
   async iterateBusStation() {
     const busStatuses = await this.prisma.busAndStation.findMany({
       include: {

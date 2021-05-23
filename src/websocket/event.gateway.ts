@@ -25,12 +25,14 @@ export class EventsGateway {
         break;
       }
     }
-    this.broadcast('disconnect');
+    this.broadcast('disconnect',{});
   }
 
-  broadcast(data) {
+  broadcast(data, data2: any) {
     for (const c of this.wsClients) {
-      c.send(data);
+      console.log(data);
+      console.log(data2);
+      c.send(data, data2);
     }
   }
 

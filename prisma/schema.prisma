@@ -104,7 +104,7 @@ model BusDriver {
   companyName       String
   userId            Int
   User              User               @relation(fields: [userId], references: [id])
-  busId             Int
+  busId             Int                @unique
   Bus               Bus                @relation(fields: [busId], references: [id])
   DriverEvaluations DriverEvaluation[]
   Passengers        Passenger[]

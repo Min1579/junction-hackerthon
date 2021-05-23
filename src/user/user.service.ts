@@ -80,6 +80,11 @@ export class UserService {
         email: true,
         password: true,
         role: true,
+        BusDriver: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -89,14 +94,14 @@ export class UserService {
       throw new BadRequestException('비밀번호가 올바르지 않습니다');
     }
 
-    const { role } = user;
+    const { role, BusDriver } = user;
 
     const jwt = this._authService.signPayload(
       { userId: user.id, name: user.name ? user.name : '' },
       true,
     );
 
-    return { jwt, role };
+    return { jwt, role, driverId: BusDriver ? BusDriver.id : null };
   }
 
   async findUnique(userId: number) {
